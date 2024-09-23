@@ -1,7 +1,6 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:record/record.dart';
 import 'package:vosk_flutter/vosk_flutter.dart';
 
 void main() {
@@ -28,14 +27,12 @@ class VoskFlutterDemo extends StatefulWidget {
 
 class _VoskFlutterDemoState extends State<VoskFlutterDemo> {
   static const _textStyle = TextStyle(fontSize: 30, color: Colors.black);
-  static const _modelName = 'vosk-model-small-en-us-0.15';
+
   static const _sampleRate = 16000;
 
   final _vosk = VoskFlutterPlugin.instance();
   final _modelLoader = ModelLoader();
-  final _recorder = AudioRecorder();
 
-  String? _fileRecognitionResult;
   String? _error;
   Model? _model;
   Recognizer? _recognizer;
@@ -47,16 +44,16 @@ class _VoskFlutterDemoState extends State<VoskFlutterDemo> {
   void initState() {
     super.initState();
     _modelLoader
-        .loadFromAssets('assets/models/vosk-model-small-en-us-0.15.zip')
+        .loadFromAssets('assets/models/vosk-model-small-fr-0.22.zip')
         .then((modelPath) => _vosk.createModel(modelPath))
         .then((model) => setState(() => _model = model))
-        .then((_) => _vosk.createRecognizer(
-            model: _model!, sampleRate: _sampleRate)) // create recognizer
+        .then((_) =>
+            _vosk.createRecognizer(model: _model!, sampleRate: _sampleRate))
         .then((value) => _recognizer = value)
         .then((recognizer) {
       if (Platform.isAndroid) {
         _vosk
-            .initSpeechService(_recognizer!) // init speech service
+            .initSpeechService(_recognizer!)
             .then((speechService) =>
                 setState(() => _speechService = speechService))
             .catchError((e) => setState(() => _error = e.toString()));
@@ -82,7 +79,7 @@ class _VoskFlutterDemoState extends State<VoskFlutterDemo> {
         ),
       );
     } else {
-      return Platform.isAndroid ? _androidExample() : _commonExample();
+      return _androidExample();
     }
   }
 
@@ -118,47 +115,5 @@ class _VoskFlutterDemoState extends State<VoskFlutterDemo> {
         ),
       ),
     );
-  }
-
-  Widget _commonExample() {
-    return Scaffold(
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            ElevatedButton(
-                onPressed: () async {
-                  if (_recognitionStarted) {
-                    await _stopRecording();
-                  } else {
-                    await _recordAudio();
-                  }
-                  setState(() => _recognitionStarted = !_recognitionStarted);
-                },
-                child: Text(
-                    _recognitionStarted ? "Stop recording" : "Record audio")),
-            Text("Final recognition result: $_fileRecognitionResult",
-                style: _textStyle),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Future<void> _recordAudio() async {
-    try {
-      await _recorder.start(const RecordConfig(), path: 'aFullPath/myFile.m4a');
-    } catch (e) {}
-  }
-
-  Future<void> _stopRecording() async {
-    try {
-      final filePath = await _recorder.stop();
-      if (filePath != null) {
-        final bytes = File(filePath).readAsBytesSync();
-        _recognizer!.acceptWaveformBytes(bytes);
-        _fileRecognitionResult = await _recognizer!.getFinalResult();
-      }
-    } catch (e) {}
   }
 }
